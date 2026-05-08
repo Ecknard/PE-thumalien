@@ -1,0 +1,7 @@
+{
+  "n_documents": 214,
+  "embedding_dim": 384,
+  "model_name": "paraphrase-multilingual-MiniLM-L12-v2",
+  "device": "cpu",
+  "source_file": "bluesky_posts_20260215_164957_fr_en_only_clean.json"
+}

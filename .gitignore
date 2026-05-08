@@ -1,0 +1,57 @@
+# Environment
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data (ne pas versionner les données brutes volumineuses)
+data/raw/*.json
+data/processed/*.json
+# Garder les données labellisées et les samples
+!data/labeled/
+!data/labeled/*.json
+
+# Models (trop lourds pour git, utiliser DVC ou Git LFS)
+models/*.npy
+models/*.pkl
+models/fake_news_classifier/
+# Garder les métadonnées
+!models/*.json
+
+# Logs
+logs/*.log
+logs/*.txt
+
+# Streamlit
+.streamlit/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker/postgres_data/
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# CodeCarbon
+emissions.csv
+codecarbon.log

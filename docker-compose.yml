@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+
+  # ============================================================
+  # BASE DE DONNÉES POSTGRESQL
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: thumalien_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-thumalien_db}
+      POSTGRES_USER: ${DB_USER:-thumalien_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-thumalien_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-thumalien_user} -d ${DB_NAME:-thumalien_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # DASHBOARD STREAMLIT
+  # ============================================================
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: thumalien_dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=${DB_NAME:-thumalien_db}
+      - DB_USER=${DB_USER:-thumalien_user}
+      - DB_PASSWORD=${DB_PASSWORD:-thumalien_password}
+      - DB_PORT=5432
+      - BLUESKY_HANDLE=${BLUESKY_HANDLE}
+      - BLUESKY_APP_PASSWORD=${BLUESKY_APP_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    command: streamlit run dashboard/Home.py --server.port=8501 --server.address=0.0.0.0
+
+  # ============================================================
+  # SERVICE PIPELINE (collecte + analyse, mode daemon optionnel)
+  # ============================================================
+  pipeline:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: thumalien_pipeline
+    restart: "no"
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=${DB_NAME:-thumalien_db}
+      - DB_USER=${DB_USER:-thumalien_user}
+      - DB_PASSWORD=${DB_PASSWORD:-thumalien_password}
+      - DB_PORT=5432
+      - BLUESKY_HANDLE=${BLUESKY_HANDLE}
+      - BLUESKY_APP_PASSWORD=${BLUESKY_APP_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    profiles:
+      - pipeline
+    command: python -m src.pipeline --limit 25
+
+volumes:
+  postgres_data:

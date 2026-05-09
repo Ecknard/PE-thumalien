@@ -312,3 +312,77 @@ class TestConfig:
 # ============================================================
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+
+
+# ============================================================
+# TEST LLM CLASSIFIER (mock — sans Ollama)
+# ============================================================
+class TestPhiClassifier:
+    def setup_method(self):
+        from src.classifier.llm_classifier import PhiClassifier
+        self.clf = PhiClassifier()
+
+    def test_import(self):
+        from src.classifier.llm_classifier import PhiClassifier
+        assert PhiClassifier is not None
+
+    def test_fallback_when_unavailable(self):
+        """Sans Ollama, doit retourner un résultat de fallback propre."""
+        self.clf._available = False
+        result = self.clf.predict_one("Texte de test")
+        assert "credibility_score" in result
+        assert result["credibility_score"] == 0.5
+        assert result["confidence"] == 0.0
+        assert "error" in result
+
+    def test_parse_valid_json(self):
+        """Test du parser JSON avec réponse valide."""
+        raw = '{"credibility_score": 0.1, "is_fake": true, "confidence": 0.9, "reasoning": "Fake", "signals": ["urgence"]}'
+        result = self.clf._parse_response(raw, "test")
+        assert result["credibility_score"] == 0.1
+        assert result["is_fake"] is True
+        assert result["signals"] == ["urgence"]
+
+    def test_parse_json_with_markdown(self):
+        """Test du parser JSON avec backticks markdown."""
+        raw = '```json\n{"credibility_score": 0.9, "is_fake": false, "confidence": 0.85, "reasoning": "Fiable", "signals": []}\n```'
+        result = self.clf._parse_response(raw, "test")
+        assert result["credibility_score"] == 0.9
+        assert result["is_fake"] is False
+
+    def test_parse_invalid_json_returns_fallback(self):
+        result = self.clf._parse_response("Ceci n'est pas du JSON", "test")
+        assert result["credibility_score"] == 0.5
+
+    def test_score_clamped_to_01(self):
+        """Score hors plage doit être ramené à [0, 1]."""
+        raw = '{"credibility_score": 1.5, "is_fake": false, "confidence": 0.9, "reasoning": "Test", "signals": []}'
+        result = self.clf._parse_response(raw, "test")
+        assert 0.0 <= result["credibility_score"] <= 1.0
+
+
+class TestHybridClassifier:
+    def test_import(self):
+        from src.classifier.hybrid_classifier import HybridFakeNewsClassifier
+        assert HybridFakeNewsClassifier is not None
+
+    def test_is_uncertain(self):
+        from src.classifier.hybrid_classifier import HybridFakeNewsClassifier
+        clf = HybridFakeNewsClassifier(uncertainty_low=0.35, uncertainty_high=0.65)
+        assert clf._is_uncertain(0.5) is True
+        assert clf._is_uncertain(0.4) is True
+        assert clf._is_uncertain(0.1) is False
+        assert clf._is_uncertain(0.9) is False
+
+    def test_combine_scores(self):
+        from src.classifier.hybrid_classifier import HybridFakeNewsClassifier
+        clf = HybridFakeNewsClassifier()
+        combined = clf._combine_scores(0.4, 0.1, 0.9)
+        assert 0.0 <= combined <= 1.0
+        # Phi-3 confiant → score proche de phi3_score
+        assert combined < 0.4
+
+    def test_get_stats_empty(self):
+        from src.classifier.hybrid_classifier import HybridFakeNewsClassifier
+        clf = HybridFakeNewsClassifier()
+        assert clf.get_stats([]) == {}

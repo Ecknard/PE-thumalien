@@ -15,7 +15,7 @@ sys.path.append(str(Path(__file__).parent))
 from config import RAW_DIR, PROCESSED_DIR, LOG_FILE
 from src.collector.bluesky_collector import BlueskyCollector
 from src.preprocessing.text_preprocessor import preprocess_posts
-from src.classifier.fake_news_classifier import FakeNewsClassifier
+from src.classifier.hybrid_classifier import HybridFakeNewsClassifier
 from src.emotion.emotion_analyzer import EmotionAnalyzer
 from src.explainability.explainer import FakeNewsExplainer
 from src.monitoring.energy_tracker import EnergyTracker
@@ -39,7 +39,7 @@ class ThumalienPipeline:
 
     def __init__(self):
         self.collector = BlueskyCollector()
-        self.classifier = FakeNewsClassifier(prefer_bert=True)
+        self.classifier = HybridFakeNewsClassifier()
         self.emotion_analyzer = EmotionAnalyzer()
         self.explainer = FakeNewsExplainer()
         self.db = DatabaseConnector()
@@ -50,7 +50,7 @@ class ThumalienPipeline:
     def _ensure_models(self):
         """Charge les modèles une seule fois."""
         if not self._models_loaded:
-            self.classifier.load()
+            pass  # HybridFakeNewsClassifier charge les modèles à la demande
             self._models_loaded = True
 
     # ----------------------------------------------------------
@@ -111,7 +111,7 @@ class ThumalienPipeline:
         texts = [p.get("text_clean") or p.get("text", "") for p in posts]
 
         with self.energy_tracker.track(
-            "classification", n_samples=len(texts), model_name=self.classifier.active_model
+            "classification", n_samples=len(texts), model_name=self.classifier.active_models
         ):
             predictions = self.classifier.predict(texts)
 
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.train:
-        from src.classifier.fake_news_classifier import FakeNewsClassifier, load_labeled_data, create_sample_dataset, BaselineClassifier
+        from src.classifier.fake_news_classifier import load_labeled_data, create_sample_dataset, BaselineClassifier
         texts, labels = load_labeled_data()
         if not texts:
             texts, labels = create_sample_dataset()

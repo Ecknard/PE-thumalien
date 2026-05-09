@@ -10,7 +10,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
 
-from src.classifier.fake_news_classifier import FakeNewsClassifier
+from src.classifier.hybrid_classifier import HybridFakeNewsClassifier
 from src.emotion.emotion_analyzer import EmotionAnalyzer
 from src.explainability.explainer import FakeNewsExplainer
 from src.database.db_connector import DatabaseConnector
@@ -25,9 +25,9 @@ st.markdown("Entrez un texte pour obtenir une analyse complète : crédibilité,
 # ============================================================
 @st.cache_resource
 def load_models():
-    clf = FakeNewsClassifier(prefer_bert=True)
+    clf = HybridFakeNewsClassifier()
     try:
-        clf.load()
+        pass  # chargement lazy
     except Exception:
         # Fallback : pas de modèle entraîné
         pass
@@ -172,6 +172,43 @@ if analyze_btn and user_text.strip():
                 title="Profil émotionnel",
             )
             st.plotly_chart(fig_radar, use_container_width=True)
+
+    # ----------------------------------------------------------
+    # BLOC PHI-3 MINI — affiché uniquement si Phi-3 a été utilisé
+    # ----------------------------------------------------------
+    if pred.get("phi3_used"):
+        st.divider()
+        st.subheader("🤖 Analyse approfondie — Phi-3 Mini")
+        col_phi1, col_phi2 = st.columns([2, 1])
+        with col_phi1:
+            st.markdown(
+                f"""
+                <div style="background:#f0f9ff;border-left:4px solid #2563EB;
+                padding:1rem;border-radius:8px;margin-bottom:0.5rem">
+                <b>Raisonnement Phi-3 :</b><br>{pred.get('phi3_reasoning', '—')}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            if pred.get("phi3_signals"):
+                st.markdown("**Signaux détectés par Phi-3 :**")
+                cols_sig = st.columns(min(len(pred["phi3_signals"]), 4))
+                for i, sig in enumerate(pred["phi3_signals"]):
+                    cols_sig[i % 4].markdown(
+                        f"<span style=\'background:#fee2e2;color:#dc2626;padding:2px 8px;"
+                        f"border-radius:12px;font-size:0.85rem\'>{sig}</span>",
+                        unsafe_allow_html=True
+                    )
+        with col_phi2:
+            st.metric("Score DistilBERT", f"{pred.get(\'bert_score\', 0):.1%}")
+            st.metric("Score Phi-3 Mini", f"{pred.get(\'phi3_score\', 0):.1%}")
+            st.metric("Score combiné final", f"{pred.get(\'credibility_score\', 0):.1%}")
+            st.caption("Score final = DistilBERT (40%) + Phi-3 (60%) sur les cas ambigus.")
+    elif pred.get("decision_path") == "distilbert_only":
+        st.info(
+            "ℹ️ **DistilBERT seul** — Score suffisamment clair, Phi-3 non sollicité. "
+            "Phi-3 intervient sur les cas ambigus (score entre 35% et 65%)."
+        )
 
     # ----------------------------------------------------------
     # EXPLICABILITÉ DÉTAILLÉE

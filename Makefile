@@ -84,16 +84,3 @@ help:
 	@echo "  make docker-up      Démarrer via Docker Compose"
 	@echo "  make docker-down    Arrêter les conteneurs Docker"
 	@echo ""
-
-# Ollama / LLM
-setup-ollama:
-	python scripts/setup_ollama.py
-
-check-phi3:
-	python -m src.classifier.llm_classifier --check
-
-test-phi3:
-	python -m src.classifier.llm_classifier --benchmark
-
-test-hybrid:
-	python -m src.classifier.hybrid_classifier

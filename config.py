@@ -103,20 +103,3 @@ CODECARBON_COUNTRY = "FRA"
 # ============================================================
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = str(LOGS_DIR / "thumalien.log")
-
-# ============================================================
-# MODÈLE LLM (Phi-3 Mini via Ollama) — sans GPU
-# ============================================================
-# Ollama doit être installé : https://ollama.com
-# Puis : ollama pull phi3:mini  (ou python scripts/setup_ollama.py)
-LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "phi3:mini")
-LLM_OLLAMA_URL = os.getenv("LLM_OLLAMA_URL", "http://localhost:11434")
-LLM_TIMEOUT_SECONDS = 60          # Timeout par requête (CPU peut être lent)
-LLM_TEMPERATURE = 0.0              # Déterministe et reproductible
-LLM_MAX_TOKENS = 256               # Juste assez pour JSON + raisonnement court
-
-# Architecture hybride : DistilBERT filtre en premier,
-# Phi-3 intervient uniquement sur la zone d'incertitude
-HYBRID_UNCERTAINTY_LOW = 0.35     # Score < 0.35 → Phi-3 requis
-HYBRID_UNCERTAINTY_HIGH = 0.65    # Score > 0.65 → Phi-3 requis
-# Zone [0.35 - 0.65] → cas ambigu, Phi-3 tranche
